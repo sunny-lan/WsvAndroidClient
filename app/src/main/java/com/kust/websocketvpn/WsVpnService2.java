@@ -13,6 +13,7 @@ import android.util.Log;
 import java.io.IOException;
 import java.net.URISyntaxException;
 
+import wsvmobile.Protector;
 import wsvmobile.Wsvmobile;
 
 public class WsVpnService2 extends VpnService implements Runnable {
@@ -82,7 +83,7 @@ public class WsVpnService2 extends VpnService implements Runnable {
     public void runInternal() throws IOException, URISyntaxException {
         Log.d(TAG, "Thread begin");
         running = true;
-        String wsUrl = "ws://192.168.2.111:80";
+        String wsUrl = "ws://192.168.2.111:80/";//"wss://sheltered-beach-23795.herokuapp.com/";
 
 
         // Configure a new interface from our VpnService instance. This must be done
@@ -102,7 +103,7 @@ public class WsVpnService2 extends VpnService implements Runnable {
             throw new RuntimeException("this should never happen");
         }
 
-        boolean ipv6 = false;
+        boolean ipv6 = true;
         if (ipv6) {
             builder.addAddress(tunAddrV6, 126)
                     .addRoute("::", 0);
@@ -119,7 +120,7 @@ public class WsVpnService2 extends VpnService implements Runnable {
 
         Log.i(TAG, "fd=" + fd);
         try {
-            Wsvmobile.connect(fd, wsUrl, null);
+            Wsvmobile.connectFd(fd, wsUrl,  null);
         } catch (Exception e) {
             e.printStackTrace();
             throw new RuntimeException(e);
