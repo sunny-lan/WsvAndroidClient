@@ -1,0 +1,4 @@
+<resources>
+    <string name="app_name">Websocket VPN</string>
+    <string name="connecting">connecting</string>
+</resources>
