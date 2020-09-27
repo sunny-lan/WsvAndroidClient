@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string-array name="servers" >
+        <item>ws://192.168.2.111:80/</item>
+        <item>wss://sheltered-beach-23795.herokuapp.com/</item>
+    </string-array>
+</resources>

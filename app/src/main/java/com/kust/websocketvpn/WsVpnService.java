@@ -17,7 +17,6 @@ import java.net.URI;
 import java.net.URISyntaxException;
 import java.nio.ByteBuffer;
 import java.nio.channels.FileChannel;
-import java.util.Arrays;
 import java.util.concurrent.CountDownLatch;
 
 
@@ -36,7 +35,7 @@ public class WsVpnService extends VpnService implements Runnable {
     public void onCreate() {
 
         // Create the intent to "configure" the connection (just start ToyVpnClient).
-        mConfigureIntent = PendingIntent.getActivity(this, 0, new Intent(this, WsVPNUi.class),
+        mConfigureIntent = PendingIntent.getActivity(this, 0, new Intent(this, WsvUI.class),
                 PendingIntent.FLAG_UPDATE_CURRENT);
     }
 
