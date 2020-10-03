@@ -144,7 +144,7 @@ public class WsvService extends VpnService {
         }
     }
 
-    private void stopBlocking(){
+    private void stopBlocking() {
         if (!vpnRunning.get())
             throw new RuntimeException("Tried to destroy non-serviceRunning program");
 
@@ -152,7 +152,7 @@ public class WsvService extends VpnService {
             try {
                 Log.i(TAG, "trying to kill go");
                 Wsvmobile.close();
-                goThread.join();//TODO timeout not effective
+                goThread.join(KILL_TIMEOUT);
             } catch (InterruptedException e) {
                 throw new RuntimeException("Service interrupted before child thread could be " +
                         "gracefully killed", e);
@@ -162,10 +162,15 @@ public class WsvService extends VpnService {
         }
 
         if (goThread.isAlive()) {
-            Log.w(TAG, "Go thread still running, force interrupt");
-            goThread.interrupt();
+            throw new RuntimeException("Go thread still runnning");
         }
         goThread = null;
+
+        try {
+            Wsvmobile.closeFD(currentTunFD);
+        } catch (Exception e) {
+            throw new RuntimeException("Unable to close FD",e);
+        }
 
         vpnRunning.set(false);
 
