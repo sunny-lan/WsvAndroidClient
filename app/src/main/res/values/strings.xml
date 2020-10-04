@@ -1,6 +1,18 @@
 <resources>
-    <string name="app_name">Websocket VPN</string>
-    <string name="connecting">Connecting...</string>
+    <string name="app_name">Wsv</string>
+    <string name="connecting">Connecting…</string>
     <string name="startService">Start service</string>
     <string name="stopService">Stop service</string>
+    <string name="starting">Starting…</string>
+    <string name="stopping">Stopping…</string>
+    <string name="waitingVpn">Waiting for VPN service…</string>
+    <string name="stop">Stop</string>
+    <string name="start">Start</string>
+    <string name="serviceUnbound">VPN service unbound</string>
+    <string name="serviceBound">VPN service bound</string>
+    <string name="failedBind">Failed to bind to VPN service</string>
+    <string name="serviceStoppedUnexpectedly">VPN service stopped unexpectedly</string>
+    <string name="serviceStoppedNormally">VPN service stopped normally</string>
+    <string name="vpnStopping">VPN stopping</string>
+    <string name="vpnRunning">VPN running</string>
 </resources>

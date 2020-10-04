@@ -22,35 +22,6 @@ public class WsvUI extends AppCompatActivity {
     private Spinner server;
     private Button startBtn;
 
-    private WsvService mBoundService;
-    private ServiceConnection mConnection = new ServiceConnection() {
-        public void onServiceConnected(ComponentName className, IBinder service) {
-            // This is called when the connection with the service has been
-            // established, giving us the service object we can use to
-            // interact with the service.  Because we have bound to a explicit
-            // service that we know is running in our own process, we can
-            // cast its IBinder to a concrete class and directly access it.
-            mBoundService = ((WsvService.LocalBinder) service).getService();
-
-            // Tell the user about this for our demo.
-            Toast.makeText(WsvUI.this, "VPN service detected",
-                    Toast.LENGTH_SHORT).show();
-        }
-
-        public void onServiceDisconnected(ComponentName className) {
-            // This is called when the connection with the service has been
-            // unexpectedly disconnected -- that is, its process crashed.
-            // Because it is running in our same process, we should never
-            // see this happen.
-            mBoundService = null;
-            // Tell the user about this for our demo.
-            Toast.makeText(WsvUI.this, "VPN service stopped",
-                    Toast.LENGTH_SHORT).show();
-        }
-    };
-    private boolean mShouldUnbind;
-
-
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -62,54 +33,106 @@ public class WsvUI extends AppCompatActivity {
         startBtn.setOnClickListener(this::onStartClick);
     }
 
+    private WsvService.API api;
+    private ServiceConnection mConnection = new ServiceConnection() {
+        public void onServiceConnected(ComponentName className, IBinder service) {
+            WsvUI.this.api = ((WsvService.API) service);
+            api.onStateChanged(WsvUI.this::updateStateFromThread);
+
+            updateState();
+            Toast.makeText(WsvUI.this, R.string.serviceBound,
+                    Toast.LENGTH_SHORT).show();
+        }
+
+        public void onServiceDisconnected(ComponentName className) {
+            api = null;
+            updateState();
+            Toast.makeText(WsvUI.this, R.string.serviceUnbound,
+                    Toast.LENGTH_SHORT).show();
+        }
+    };
+    private boolean serviceBound;
+
+    private void updateStateFromThread(){
+        runOnUiThread(this::updateState);
+    }
+
+    //updates ui state based on server state
+    private void updateState() {
+        //not bound yet
+        if (api == null) {
+            //disable all controls
+            startBtn.setEnabled(false);
+            startBtn.setText(R.string.waitingVpn);
+        } else {
+            if (api.isStarting()) {
+                startBtn.setText(R.string.starting);
+                startBtn.setEnabled(false);
+            } else if (api.isStopping()) {
+                startBtn.setText(R.string.stopping);
+                startBtn.setEnabled(false);
+            } else {
+                startBtn.setEnabled(true);
+                if (api.isRunning()) {
+                    startBtn.setText(R.string.stop);
+                } else {
+                    startBtn.setText(R.string.start);
+                }
+            }
+        }
+    }
+
     void doBindService() {
-        // Attempts to establish a connection with the service.  We use an
-        // explicit class name because we want a specific service
-        // implementation that we know will be running in our own process
-        // (and thus won't be supporting component replacement by other
-        // applications).
+        Log.d(TAG, "attempt to bind to WsvService");
         if (bindService(new Intent(this, WsvService.class),
                 mConnection, Context.BIND_AUTO_CREATE)) {
-            mShouldUnbind = true;
+            serviceBound = true;
         } else {
-            Log.e(TAG, "Error: The requested service doesn't " +
-                    "exist, or this client isn't allowed access to it.");
+            Log.e(TAG, "Error: Bind WsvService failed");
+            Toast.makeText(this, R.string.failedBind, Toast.LENGTH_LONG).show();
         }
     }
 
-    private void onStartClick(View view) {
-
-        if (!isMyServiceRunning()) {
-            Intent intent = VpnService.prepare(WsvUI.this);
-            if (intent != null) {
-                startActivityForResult(intent, 0);
-            } else {
-                onActivityResult(0, RESULT_OK, null);
-            }
-            doBindService();
-        } else {
-            Log.d(TAG, "try to tell service to stop");
-            mBoundService.stop();
-//            LocalBroadcastManager.getInstance(this).sendBroadcast(new Intent(WsVpnService2.ACTION_DISCONNECT));
-            startBtn.setText(getString(R.string.startService));
-        }
-    }
-
-
-    private boolean isMyServiceRunning() {
-        if(mBoundService==null)return false;
-        return mBoundService.getVpnRunning();
+    void doUnbindService() {
+        unbindService(mConnection);
+        serviceBound = false;
+        api = null;
     }
 
     @Override
     protected void onResume() {
         super.onResume();
-        doBindService();
-        if (isMyServiceRunning()) {
-            startBtn.setText(getString(R.string.stopService));
-        } else {
+        if (!serviceBound)
+            doBindService();
+        else
+            updateState();
+    }
 
-            startBtn.setText(getString(R.string.startService));
+    @Override
+    protected void onPause() {
+        super.onPause();
+        if (serviceBound)
+            doUnbindService();
+    }
+
+    private void startService() {
+        Intent intent = VpnService.prepare(WsvUI.this);
+        if (intent != null) {
+            startActivityForResult(intent, 0);
+        } else {
+            onActivityResult(0, RESULT_OK, null);
+        }
+    }
+
+    private void onStartClick(View view) {
+        if (api == null)
+            throw new RuntimeException("This should never happen");
+
+        if (api.isRunning()) {
+            Log.d(TAG, "try to tell service to stop");
+            api.stop();
+        } else {
+            startService();
         }
     }
 
@@ -122,23 +145,13 @@ public class WsvUI extends AppCompatActivity {
             startService(getServiceIntent()
                     .setAction(WsvService.ACTION_CONNECT)
             );
-            startBtn.setText(getString(R.string.stopService));
-
         }
     }
 
-    void doUnbindService() {
-        if (mShouldUnbind) {
-            // Release information about the service's state.
-            unbindService(mConnection);
-            mShouldUnbind = false;
-        }
-    }
 
     @Override
     protected void onDestroy() {
         super.onDestroy();
-        doUnbindService();
     }
 
     private Intent getServiceIntent() {
