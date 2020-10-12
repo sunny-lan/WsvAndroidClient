@@ -3,8 +3,8 @@
     xmlns:tools="http://schemas.android.com/tools"
     package="com.kust.websocketvpn">
 
-    <uses-permission android:name="android.permission.FOREGROUND_SERVICE"/>
-    <uses-permission android:name="android.permission.INTERNET"/>
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
+    <uses-permission android:name="android.permission.INTERNET" />
 
     <application
         android:allowBackup="true"
@@ -13,6 +13,12 @@
         android:roundIcon="@mipmap/ic_launcher_round"
         android:supportsRtl="true"
         android:theme="@style/AppTheme">
+        <activity
+            android:name=".db.ConnectionSettingsEditorActivity"
+            android:label="@string/title_activity_connection_settings_editor"></activity>
+        <activity
+            android:name=".db.ConnectionSettingsEditor"
+            android:label="@string/title_activity_connection_settings_editor" />
         <activity android:name=".WsvUI">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
@@ -23,9 +29,7 @@
 
         <service
             android:name=".WsvService"
-            android:permission="android.permission.BIND_VPN_SERVICE"
-
-            >
+            android:permission="android.permission.BIND_VPN_SERVICE">
             <intent-filter>
                 <action android:name="android.net.VpnService" />
             </intent-filter>

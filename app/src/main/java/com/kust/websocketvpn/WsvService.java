@@ -15,9 +15,15 @@ import android.os.ParcelFileDescriptor;
 import android.util.Log;
 import android.widget.Toast;
 
+import com.kust.Util;
+
+import java.io.IOException;
+import java.io.InputStream;
 import java.util.ArrayList;
 import java.util.concurrent.atomic.AtomicBoolean;
 
+import wsvmobile.Settings;
+import wsvmobile.WsConnSettings;
 import wsvmobile.Wsvmobile;
 
 public class WsvService extends VpnService {
@@ -46,35 +52,39 @@ public class WsvService extends VpnService {
     private String tunAddr, tunAddrIpv6;
     private String dnsAddr;
     private boolean allowIpv6;
+    private Settings goSettings;
 
-    public interface Listener{
+    public interface Listener {
         void onStateChanged();
     }
-    private void onStateChanged(){
-        for(Listener l:api.listeners){
+
+    private void onStateChanged() {
+        for (Listener l : api.listeners) {
             l.onStateChanged();
         }
     }
+
     public class API extends Binder {
         public boolean isRunning() {
             return vpnRunning.get();
         }
 
-        public void stop(){
+        public void stop() {
             Log.i(TAG, "Bound client requested to destroy service");
             stopStage1();
         }
 
-        private ArrayList<Listener> listeners=new ArrayList<>();
-        public void onStateChanged(Listener listener){
+        private ArrayList<Listener> listeners = new ArrayList<>();
+
+        public void onStateChanged(Listener listener) {
             listeners.add(listener);
         }
 
-        public boolean isStopping(){
+        public boolean isStopping() {
             return stopping.get();
         }
 
-        public boolean isStarting(){
+        public boolean isStarting() {
             return starting.get();
         }
     }
@@ -94,6 +104,18 @@ public class WsvService extends VpnService {
         tunAddrIpv6 = prefs.getString(STR_TUNADDR6, "fdfe:dcba:9876::1");
         dnsAddr = prefs.getString(STR_DNSADDR, "8.8.8.8");
         allowIpv6 = prefs.getBoolean(BOOL_IPV6, false);//TODO
+        goSettings = new Settings();
+        WsConnSettings s = new WsConnSettings();
+        s.setBufferSize(32 * 1024);
+        s.setTimeout(5000);
+        try {
+            InputStream is = getResources().openRawResource(R.raw.ca);
+            s.setTrustedCerts(Util.readAllBytes(is));
+            is.close();
+        } catch (IOException e) {
+            Log.e(TAG, "failed to close resource inputstream", e);
+        }
+        goSettings.setWsConnectionSettings(s);
     }
 
     @Override
@@ -151,9 +173,9 @@ public class WsvService extends VpnService {
         goThread.start();
     }
 
-    private void toast(int id, int len){
+    private void toast(int id, int len) {
         Handler handler = new Handler(Looper.getMainLooper());
-        handler.post(() -> Toast.makeText(getApplicationContext(), id,len).show());
+        handler.post(() -> Toast.makeText(getApplicationContext(), id, len).show());
     }
 
     private void goThread() {
@@ -163,19 +185,19 @@ public class WsvService extends VpnService {
         onStateChanged();
 
         try {
-            Wsvmobile.begin(currentTunFD, wsUrl);
+            Wsvmobile.begin(currentTunFD, wsUrl, goSettings);
             Log.i(TAG, "go code exited without error");
             toast(R.string.serviceStoppedNormally, Toast.LENGTH_SHORT);
         } catch (Exception e) {
             Log.e(TAG, "Error from Go", e);
-            toast( R.string.serviceStoppedUnexpectedly, Toast.LENGTH_LONG);
+            toast(R.string.serviceStoppedUnexpectedly, Toast.LENGTH_LONG);
         }
 
         stopStage2();
     }
 
     // stopStage1 requests go thread to stop
-    private void stopStage1(){
+    private void stopStage1() {
         if (!vpnRunning.get())
             throw new RuntimeException("Tried to destroy non-serviceRunning program");
 
@@ -205,7 +227,8 @@ public class WsvService extends VpnService {
         try {
             Wsvmobile.closeFD(currentTunFD);
         } catch (Exception e) {
-            throw new RuntimeException("Unable to close FD", e);
+            //already closed
+            Log.w(TAG, "error closing FD", e);
         }
 
         vpnRunning.set(false);
@@ -222,7 +245,7 @@ public class WsvService extends VpnService {
     private void updateForegroundNotification(final String message) {
         NotificationManager mNotificationManager = (NotificationManager) getSystemService(
                 NOTIFICATION_SERVICE);
-        String NOTIFICATION_CHANNEL_ID="WsVpn.Status";
+        String NOTIFICATION_CHANNEL_ID = "WsVpn.Status";
         mNotificationManager.createNotificationChannel(new NotificationChannel(
                 NOTIFICATION_CHANNEL_ID, NOTIFICATION_CHANNEL_ID,
                 NotificationManager.IMPORTANCE_DEFAULT));

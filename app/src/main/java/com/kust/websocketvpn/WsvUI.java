@@ -102,6 +102,7 @@ public class WsvUI extends AppCompatActivity {
     @Override
     protected void onResume() {
         super.onResume();
+        updateState();
         if (!serviceBound)
             doBindService();
         else
@@ -138,6 +139,7 @@ public class WsvUI extends AppCompatActivity {
 
     @Override
     protected void onActivityResult(int request, int result, Intent data) {
+        super.onActivityResult(request, result, data);
         if (result == RESULT_OK) {
             getSharedPreferences("defaultSettings", MODE_PRIVATE).edit()
                     .putString(WsvService.STR_SERVER, server.getSelectedItem().toString())
