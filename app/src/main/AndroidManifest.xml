@@ -14,11 +14,9 @@
         android:supportsRtl="true"
         android:theme="@style/AppTheme">
         <activity
-            android:name=".db.ConnectionSettingsEditorActivity"
-            android:label="@string/title_activity_connection_settings_editor"></activity>
-        <activity
-            android:name=".db.ConnectionSettingsEditor"
-            android:label="@string/title_activity_connection_settings_editor" />
+            android:name=".VPNSettingsEditor"
+            android:label="@string/title_activity_v_p_n_settings_editor"
+            android:theme="@style/AppTheme.NoActionBar"></activity>
         <activity android:name=".WsvUI">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />

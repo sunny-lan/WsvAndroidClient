@@ -1,13 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string-array name="servers">
-        <item>ws://192.168.2.111:80/</item>
-        <item>ws://192.168.2.108:80/</item>
-        <item>wss://192.168.2.108:443/</item>
-        <item>ws://35.182.101.66:80/</item>
-        <item>ws://x4jz1ockbl.execute-api.ca-central-1.amazonaws.com/prod/</item>
-        <item>wss://x4jz1ockbl.execute-api.ca-central-1.amazonaws.com/prod/</item>
-    </string-array>
     <!-- Reply Preference -->
     <string-array name="reply_entries">
         <item>Reply</item>

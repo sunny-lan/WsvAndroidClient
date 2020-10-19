@@ -4,23 +4,35 @@ import android.content.ComponentName;
 import android.content.Context;
 import android.content.Intent;
 import android.content.ServiceConnection;
+import android.content.SharedPreferences;
 import android.net.VpnService;
 import android.os.Bundle;
 import android.os.IBinder;
 import android.util.Log;
 import android.view.View;
+import android.widget.AdapterView;
+import android.widget.ArrayAdapter;
 import android.widget.Button;
 import android.widget.Spinner;
 import android.widget.Toast;
 
+import androidx.annotation.NonNull;
 import androidx.appcompat.app.AppCompatActivity;
+
+import java.util.ArrayList;
+import java.util.HashSet;
+import java.util.Objects;
+import java.util.Set;
 
 public class WsvUI extends AppCompatActivity {
 
     private static final String TAG = "WsvUI";
 
-    private Spinner server;
+    private Spinner profiles;
     private Button startBtn;
+    private Button editProfile;
+
+    private SharedPreferences globalPrefs;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -28,9 +40,29 @@ public class WsvUI extends AppCompatActivity {
         setContentView(R.layout.activity_main);
 
         startBtn = findViewById(R.id.start_btn);
-        server = findViewById(R.id.server);
-
         startBtn.setOnClickListener(this::onStartClick);
+
+        profiles = findViewById(R.id.profile_spinner);
+        profiles.setOnItemSelectedListener(new AdapterView.OnItemSelectedListener() {
+            @Override
+            public void onItemSelected(AdapterView<?> parent, View view, int position, long id) {
+                editProfile.setEnabled(true);
+            }
+
+            @Override
+            public void onNothingSelected(AdapterView<?> parent) {
+                editProfile.setEnabled(false);
+            }
+        });
+
+
+        Button addProfile = findViewById(R.id.add_profile);
+        addProfile.setOnClickListener(this::onAddProfileClick);
+
+        editProfile =findViewById(R.id.edit_profile);
+        editProfile.setOnClickListener(this::onEditProfile);
+
+        globalPrefs = getSharedPreferences(WsvUI.S.GLOBAL_SETTINGS, MODE_PRIVATE);
     }
 
     private WsvService.API api;
@@ -53,7 +85,7 @@ public class WsvUI extends AppCompatActivity {
     };
     private boolean serviceBound;
 
-    private void updateStateFromThread(){
+    private void updateStateFromThread() {
         runOnUiThread(this::updateState);
     }
 
@@ -72,11 +104,17 @@ public class WsvUI extends AppCompatActivity {
                 startBtn.setText(R.string.stopping);
                 startBtn.setEnabled(false);
             } else {
-                startBtn.setEnabled(true);
                 if (api.isRunning()) {
+                    startBtn.setEnabled(true);
                     startBtn.setText(R.string.stop);
                 } else {
-                    startBtn.setText(R.string.start);
+                    if(profiles.getSelectedItem()==null){
+                        startBtn.setText(R.string.selectprofiletobegin);
+                        startBtn.setEnabled(false);
+                    }else{
+                        startBtn.setText(R.string.start);
+                        startBtn.setEnabled(true);
+                    }
                 }
             }
         }
@@ -107,6 +145,13 @@ public class WsvUI extends AppCompatActivity {
             doBindService();
         else
             updateState();
+
+        //load list of profiles
+        @NonNull Set<String> profileList = Objects.requireNonNull(globalPrefs.getStringSet(S.PROFILE_LIST, new HashSet<>()));
+        Log.i(TAG,"load profile list: "+profileList.toString());
+        ArrayAdapter<String> spinnerArrayAdapter = new ArrayAdapter<>(
+                this, android.R.layout.simple_spinner_item, new ArrayList<>(profileList));
+        profiles.setAdapter(spinnerArrayAdapter);
     }
 
     @Override
@@ -141,12 +186,11 @@ public class WsvUI extends AppCompatActivity {
     protected void onActivityResult(int request, int result, Intent data) {
         super.onActivityResult(request, result, data);
         if (result == RESULT_OK) {
-            getSharedPreferences("defaultSettings", MODE_PRIVATE).edit()
-                    .putString(WsvService.STR_SERVER, server.getSelectedItem().toString())
-                    .apply();
-            startService(getServiceIntent()
-                    .setAction(WsvService.ACTION_CONNECT)
-            );
+            Object item = profiles.getSelectedItem();
+            if (item == null)
+                item = S.DEFAULT_SETTINGS;
+            globalPrefs.edit().putString(WsvService.S.SELECTED_PROFILE, item.toString()).apply();
+            startService(getServiceIntent().setAction(WsvService.ACTION_CONNECT));
         }
     }
 
@@ -158,5 +202,25 @@ public class WsvUI extends AppCompatActivity {
 
     private Intent getServiceIntent() {
         return new Intent(this, WsvService.class);
+    }
+
+    public static class S {
+        public static final String PROFILE_LIST = "PROFILE_LIST";
+        public static final String GLOBAL_SETTINGS = "globalSettings";
+        public static final String DEFAULT_SETTINGS = "defaultSettings";
+
+    }
+
+    private void onEditProfile(View view) {
+        Intent i = new Intent(this, VPNSettingsEditor.class);
+        i.setAction(VPNSettingsEditor.I.EDIT);
+        i.putExtra(VPNSettingsEditor.I.PROFILE_NAME, profiles.getSelectedItem().toString());
+        startActivity(i);
+    }
+
+    private void onAddProfileClick(View v) {
+        Intent i = new Intent(this, VPNSettingsEditor.class);
+        i.setAction(VPNSettingsEditor.I.CREATE_NEW);
+        startActivity(i);
     }
 }

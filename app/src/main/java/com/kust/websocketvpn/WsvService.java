@@ -15,10 +15,6 @@ import android.os.ParcelFileDescriptor;
 import android.util.Log;
 import android.widget.Toast;
 
-import com.kust.Util;
-
-import java.io.IOException;
-import java.io.InputStream;
 import java.util.ArrayList;
 import java.util.concurrent.atomic.AtomicBoolean;
 
@@ -32,11 +28,15 @@ public class WsvService extends VpnService {
     public static final String ACTION_CONNECT = "com.kust.websocketvpn2.START";
     private static final int VPN_STATUS_NOTIFICATION = 1;
 
-    public static final String STR_SERVER = "com.kust.WsVPN.START.SERVER";
-    public static final String STR_TUNADDR = "com.kust.WsVPN.START.TUNADDR";
-    public static final String STR_TUNADDR6 = "com.kust.WsVPN.START.TUNADDR6";
-    public static final String STR_DNSADDR = "com.kust.WsVPN.START.DNSADDR";
-    public static final String BOOL_IPV6 = "com.kust.WsVPN.START.IPV6";
+    public static class S {
+        public static final String SERVER_URL = "com.kust.WsVPN.START.SERVER";
+        public static final String TUN_ADDR = "com.kust.WsVPN.START.TUNADDR";
+        public static final String TUN_ADDR6 = "com.kust.WsVPN.START.TUNADDR6";
+        public static final String DNS_ADDR = "com.kust.WsVPN.START.DNSADDR";
+        public static final String IPV6_ENABLED = "com.kust.WsVPN.START.IPV6";
+        public static final String SELECTED_PROFILE = "com.kust.WsVPN.START.SELECT";
+        public static final String SERVER_CERT = "com.kust.WsVPN.START.SERVER_CERT";
+    }
 
     //status variables
     private AtomicBoolean vpnRunning = new AtomicBoolean(false);
@@ -96,24 +96,23 @@ public class WsvService extends VpnService {
         return api;
     }
 
-    private void loadProxySettings(SharedPreferences prefs) {
-        wsUrl = prefs.getString(STR_SERVER, null);
+    private void loadProfile(SharedPreferences prefs) {
+        wsUrl = prefs.getString(S.SERVER_URL, null);
         if (wsUrl == null)
             throw new IllegalArgumentException("Wsv server not set");
-        tunAddr = prefs.getString(STR_TUNADDR, "26.26.26.1");
-        tunAddrIpv6 = prefs.getString(STR_TUNADDR6, "fdfe:dcba:9876::1");
-        dnsAddr = prefs.getString(STR_DNSADDR, "8.8.8.8");
-        allowIpv6 = prefs.getBoolean(BOOL_IPV6, false);//TODO
+        tunAddr = prefs.getString(S.TUN_ADDR, "26.26.26.1");
+        tunAddrIpv6 = prefs.getString(S.TUN_ADDR6, "fdfe:dcba:9876::1");
+        dnsAddr = prefs.getString(S.DNS_ADDR, "8.8.8.8");
+        allowIpv6 = prefs.getBoolean(S.IPV6_ENABLED, false);//TODO
+
         goSettings = new Settings();
         WsConnSettings s = new WsConnSettings();
         s.setBufferSize(32 * 1024);
         s.setTimeout(5000);
-        try {
-            InputStream is = getResources().openRawResource(R.raw.ca);
-            s.setTrustedCerts(Util.readAllBytes(is));
-            is.close();
-        } catch (IOException e) {
-            Log.e(TAG, "failed to close resource inputstream", e);
+        String cert = prefs.getString(S.SERVER_CERT, null);
+        if (cert != null && !cert.isEmpty()) {
+            Log.i(TAG, "Using certificates: " + cert);
+            s.setTrustedCerts(cert.getBytes());
         }
         goSettings.setWsConnectionSettings(s);
     }
@@ -125,7 +124,9 @@ public class WsvService extends VpnService {
                 return START_STICKY;
 
             //load proxy settings
-            loadProxySettings(getSharedPreferences("defaultSettings", MODE_PRIVATE));
+            SharedPreferences globalSettings = getSharedPreferences(WsvUI.S.GLOBAL_SETTINGS, MODE_PRIVATE);
+            String selectedProfile = globalSettings.getString(S.SELECTED_PROFILE, WsvUI.S.DEFAULT_SETTINGS);
+            loadProfile(getSharedPreferences(selectedProfile, MODE_PRIVATE));
 
             startVPN();
 
